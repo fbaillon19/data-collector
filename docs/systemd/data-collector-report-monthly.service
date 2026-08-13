@@ -1,0 +1,12 @@
+[Unit]
+Description=data-collector: rapport mensuel (courriel, archive complete jointe)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/opt/data-collector
+# /etc/data-collector/env definit DATA_COLLECTOR_SMTP_PASSWORD=... — hors depot, jamais versionne.
+EnvironmentFile=/etc/data-collector/env
+ExecStart=/usr/bin/python3 -m collector report --monthly

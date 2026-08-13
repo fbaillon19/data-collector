@@ -1,0 +1,31 @@
+; Copier vers ~/.config/data-collector/config.ini (ou un chemin passé en
+; argument) et renseigner les valeurs réelles. Ce fichier ne l'est jamais :
+; voir CLAUDE.md §3.
+;
+; Un appareil = une section [device:NOM]. NOM devient le nom du sous-répertoire
+; dans l'archive.
+
+[device:clock]
+url = http://192.168.x.x
+timeout_s = 10
+
+[archive]
+dir = /var/lib/data-collector
+; Avertir si l'archive compressée dépasse cette taille en pièce jointe
+max_attachment_mb = 20
+
+[ntfy]
+server = https://ntfy.sh
+topic = YOUR_NTFY_TOPIC
+
+[smtp]
+host = YOUR_SMTP_HOST
+port = 587
+user = YOUR_SMTP_USER
+to = YOUR_EMAIL
+; Le mot de passe ne figure jamais ici : variable d'environnement
+; DATA_COLLECTOR_SMTP_PASSWORD, fournie par la minuterie systemd.
+
+[alerts]
+unreachable_polls = 3
+mute_sensor_hours = 6

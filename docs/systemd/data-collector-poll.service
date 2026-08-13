@@ -1,0 +1,10 @@
+[Unit]
+Description=data-collector: interroge les appareils et archive
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/opt/data-collector
+ExecStart=/usr/bin/python3 -m collector poll
