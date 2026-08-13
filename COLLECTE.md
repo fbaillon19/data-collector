@@ -138,7 +138,13 @@ génération la plus récente qu'il contient.
 
 ## 4. Le contrat HTTP
 
-### `GET /api/history`
+**Tout ce que ce contrat définit vit sous le préfixe `/collect/`.** Le préfixe
+n'est pas décoratif : il sépare ce qui s'adresse à une machine de ce qu'un
+appareil peut exposer par ailleurs pour un usage humain. Une horloge servant déjà
+`/api/status` à sa propre page web ne risque alors aucune collision, et personne
+n'a à deviner laquelle des deux sémantiques s'applique.
+
+### `GET /collect/history`
 
 | Paramètre | Sémantique |
 |---|---|
@@ -153,7 +159,7 @@ aucune ligne de données ne suit.
 `since` = dernier horodatage reçu, jusqu'à obtenir zéro ligne. L'état vit chez le
 collecteur, l'appareil reste sans mémoire de session.
 
-### `GET /api/status`
+### `GET /collect/status`
 
 Réponse en CSV à deux colonnes `cle,valeur` — un seul format, un seul analyseur.
 
@@ -172,8 +178,9 @@ déduit.
 
 ### Opérations modifiant un état
 
-`POST /api/config`, effacement de l'anneau, remise à zéro des compteurs :
-**authentifiées**.
+La configuration de l'appareil, l'effacement de l'anneau, la remise à zéro des
+compteurs : **authentifiées**. Ces routes restent sous le préfixe propre à
+l'appareil et ne relèvent pas de ce contrat, qui ne couvre que la lecture.
 
 ⚠️ **Le firmware de l'horloge ne gère pas TLS.** Un identifiant circulerait donc en clair sur
 le réseau local. Ce n'est acceptable que sur un réseau domestique de confiance,
