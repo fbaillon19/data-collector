@@ -1,0 +1,38 @@
+# ==========================================
+# IDENTIFIANTS ET CONFIGURATION RÉELLE
+# ==========================================
+# Seuls les .template sont versionnés.
+# Voir CLAUDE.md §3.
+config.ini
+*.ini
+!*.ini.template
+.env
+
+# ==========================================
+# DONNÉES ET ÉTAT D'EXÉCUTION
+# ==========================================
+# L'archive et l'état vivent hors du dépôt — voir COLLECTE.md.
+# Ils sont ignorés ici pour qu'un essai local ne les y fasse pas entrer.
+*.csv
+!tests/**/*.csv
+state/
+*.state.json
+archive/
+var/
+
+# ==========================================
+# PYTHON
+# ==========================================
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# ==========================================
+# ÉDITEURS ET SYSTÈME
+# ==========================================
+.obsidian/
+.vscode/
+.idea/
+.DS_Store

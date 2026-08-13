@@ -21,8 +21,12 @@ perdues, puis fabriquées, sans que personne le remarque.
 |---|---|
 | **Interroge** | `GET /api/history?since=…` jusqu'à obtenir zéro ligne |
 | **Ajoute** | à un CSV d'archive, sans jamais réécrire une ligne passée |
-| **Rapporte** | résumé hebdomadaire bref, synthèse mensuelle avec le CSV joint |
+| **Rapporte** | résumé hebdomadaire bref, synthèse mensuelle avec l'archive jointe |
 | **Alerte** | appareil injoignable, capteur muet, écrasement d'anneau |
+
+**Le courriel mensuel est la sauvegarde.** Il emporte l'archive complète, pas
+seulement le mois écoulé : chaque message est un point de restauration autonome.
+Rien à vérifier périodiquement, puisqu'il n'existe pas d'exemplaire partiel.
 
 ---
 
@@ -74,10 +78,15 @@ data-collector/
 ├── README.md          ce fichier
 ├── CLAUDE.md          contexte et conventions
 ├── COLLECTE.md        ← le contrat, autorité de référence
+├── design/briefs/     spécifications de passation vers Claude Code
 ├── collector/         implémentation
 ├── simulator/         serveur servant le contrat, pour éprouver hors matériel
 └── tests/
 ```
+
+**Spécification en cours** :
+[brief 0001](design/briefs/0001-brief-collecteur.md) — le collecteur et son
+simulateur.
 
 Le **simulateur** n'est pas un accessoire. Il sait produire les cas désagréables —
 trous d'horodatage, champs vides, anneau écrasé, heure non fiable, appareil

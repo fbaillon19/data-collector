@@ -50,6 +50,16 @@ contient plusieurs générations de schéma.
 **L'absence de réponse est un événement.** Un appareil injoignable se journalise
 et se rapporte. Il ne se traite jamais comme « rien de neuf ».
 
+**Le rapport mensuel emporte l'archive entière.** L'archive vit sur la carte SD
+du Pi — point de défaillance unique. Une sauvegarde reconstituée mois par mois
+échoue dès qu'un message manque : chaque courriel doit donc être un point de
+restauration complet et autonome.
+
+**Où ça tourne.** Sur le Raspberry Pi, sous Raspberry Pi OS nu, en service
+`systemd`. Le Pi n'est plus un point de perte de données : les appareils
+détiennent leur historique — 170 jours pour l'horloge — donc une panne du
+collecteur coûte des rapports, pas des mesures. Il rattrape en repartant.
+
 ---
 
 ## 3. Sécurité
