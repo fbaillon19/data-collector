@@ -3,7 +3,16 @@
 > Collecte, archive et rapporte les mesures d'appareils domestiques qui exposent
 > le contrat décrit dans [`COLLECTE.md`](COLLECTE.md).
 
-**État : contrat figé, implémentation à écrire.** Créé le 2026-08-12.
+**État : implémentation complète, jamais confrontée à un appareil réel.**
+Créé le 2026-08-12, collecteur livré le 2026-08-13 — 73 tests, aucune dépendance
+tierce.
+
+Aucun appareil ne sert encore le contrat : l'horloge sera modifiée lors d'une
+dépose à venir. Le collecteur a été écrit et éprouvé contre un simulateur, et
+deviendra le banc de test du firmware le jour de la repose.
+
+**Reste avant mise en service** : configuration réelle hors dépôt, installation
+des unités `systemd` sur le Pi, première collecte contre l'horloge.
 
 ---
 
@@ -84,9 +93,19 @@ data-collector/
 └── tests/
 ```
 
-**Spécification en cours** :
-[brief 0001](design/briefs/0001-brief-collecteur.md) — le collecteur et son
-simulateur.
+**Spécification** : [brief 0001](design/briefs/0001-brief-collecteur.md) — le
+collecteur et son simulateur. ✅ Exécuté, avec son bilan en fin de document.
+
+### Un enseignement du premier lot
+
+Les trois défauts trouvés à la relecture n'étaient pas des erreurs de calcul :
+c'étaient des **détections incapables de se déclencher**, ou qui repartaient à
+chaque passage pour un même épisode. Toutes passaient leurs tests.
+
+La cause était commune : les tests alimentaient les fonctions avec des lots que la
+production ne produira jamais — vingt-quatre lignes d'un coup, là où un `poll`
+horaire en rapporte une. **Écrire les tests d'intégration au rythme réel du `poll`
+est ce qui les a fait tomber.**
 
 Le **simulateur** n'est pas un accessoire. Il sait produire les cas désagréables —
 trous d'horodatage, champs vides, anneau écrasé, heure non fiable, appareil

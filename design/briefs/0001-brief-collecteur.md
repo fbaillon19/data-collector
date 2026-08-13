@@ -1,6 +1,6 @@
 # Brief 0001 — Le collecteur et son simulateur
 
-> **Décidé le** : 2026-08-12
+> **Décidé le** : 2026-08-12 · **✅ Exécuté le 2026-08-13**
 > **Exécutant** : Claude Code
 > **Autorité** : [`COLLECTE.md`](../../COLLECTE.md) — en cas de divergence avec ce
 > brief, c'est le contrat qui l'emporte, et ce brief qui est à corriger.
@@ -134,7 +134,10 @@ doublon.
 - **Écrasement** : `overwritten` de `/api/status` comparé à la valeur mémorisée.
   Toute augmentation est une **perte définitive** et se rapporte comme telle.
 - **Capteur muet** : compteur d'échantillons à zéro alors que d'autres sont non
-  nuls, sur plus de `mute_sensor_hours` heures consécutives.
+  nuls, sur `mute_sensor_hours` heures consécutives ou davantage.
+  L'évaluation porte sur **le fichier d'archive courant**, jamais sur le seul lot
+  fraîchement récupéré : avec un `poll` horaire, un lot d'une ligne ne peut porter
+  aucune série, et la détection ne se déclencherait jamais.
 - **Heure non fiable** : `time_trusted` à zéro.
 
 ### 6. Rapports — `report.py`
@@ -223,7 +226,7 @@ Scénarios exigés :
 | `dead_sensor` | Champs vides et compteur à zéro pour une grandeur, les autres valides |
 | `overwritten` | `overwritten` non nul et croissant |
 | `time_untrusted` | `time_trusted` à zéro |
-| `unreachable` | Refus de connexion, puis temporisation |
+| `unreachable` | Temporisation dépassant le délai du client. Le refus de connexion est éprouvé séparément, contre un port fermé — les deux lèvent la même exception |
 | `schema_extension` | Colonnes supplémentaires en fin de ligne |
 | `schema_violation` | Colonne renommée ou réordonnée — doit être rejeté |
 | `pagination` | Plus de lignes que le plafond, force la boucle de reprise |
@@ -286,3 +289,43 @@ précisément ce que ce projet a payé quatre mois.**
 **Point d'arrêt après l'étape 3.** L'archive est la pièce dont dépend tout le
 reste, et ses règles d'écriture sont irréversibles une fois des données
 accumulées.
+
+
+---
+
+## Bilan d'exécution — 2026-08-13
+
+**73 tests, tous verts. Aucun import hors bibliothèque standard.** Vérifié en
+conditions réelles contre le simulateur : deux `poll` consécutifs produisent
+73 lignes puis aucune de plus (critère 1), et `events.csv` porte bien
+l'`overwrite_detected` attendu.
+
+### Trois défauts trouvés au point d'arrêt, tous de la même famille
+
+Aucun n'était un bug de calcul. Les trois étaient des détections qui **ne
+pouvaient pas se déclencher**, ou qui se déclenchaient à répétition pour un même
+épisode — c'est-à-dire la forme exacte du défaut qui a fait naître ce dépôt.
+
+| Défaut | Pourquoi les tests ne le voyaient pas |
+|---|---|
+| Capteur muet évalué sur le lot fraîchement récupéré | Le test fournissait 24 lignes d'un coup ; en production un lot en contient une |
+| Puis évalué sur une fenêtre glissante bornée | Le début apparent de la série dérivait, l'alerte repartait pour le même épisode |
+| `ts_utc` jamais validé | Le champ était contrôlé non vide, jamais parsé, alors que toute l'archive en dépend |
+
+**Enseignement.** Un test qui alimente une fonction avec un lot que la production
+ne produira jamais valide un chemin qui n'existe pas. Écrire les tests d'intégration
+au rythme réel du `poll` — une ligne à la fois — est ce qui les a fait tomber.
+
+### Deux décisions de Claude Code retenues telles quelles
+
+Le refus de connexion éprouvé contre un port fermé plutôt que simulé, plus honnête
+que ce que ce brief demandait. Et `device_unreachable_start` journalisé dès le
+premier échec, indépendamment du seuil d'alerte : une panne courte laisse une trace
+exploitable sans déclencher de notification.
+
+### Ce qui reste avant la mise en service
+
+Le collecteur n'a jamais parlé à un appareil réel — il n'en existe pas encore qui
+serve le contrat. Restent la configuration réelle hors dépôt, l'installation des
+unités `systemd` sur le Pi, et la première collecte contre l'horloge une fois
+reflashée.
