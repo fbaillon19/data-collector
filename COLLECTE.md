@@ -64,8 +64,17 @@ d'agrégats horaires.
 | `n_co2` | `uint8` | 1 | échantillons SCD41 |
 | `n_pm` | `uint8` | 1 | échantillons SPS30 |
 | `flags` | `uint8` | 1 | voir ci-dessous |
-| `crc8` | `uint8` | 1 | intégrité de l'enregistrement |
 | **Réservé** | — | **2** | pression atmosphérique de la station météo |
+| `crc8` | `uint8` | 1 | **dernier octet** — couvre les octets 0 à 30 |
+
+⚠️ **`crc8` occupe le dernier octet, et couvre tout ce qui précède** — y compris
+les deux octets réservés. Une somme de contrôle qui ne couvre pas la totalité de
+l'enregistrement laisse une zone où la corruption ne se voit pas.
+
+⚠️ **La graine de calcul doit être non nulle et vérifiée contre le motif d'une
+EEPROM vierge.** Une puce effacée présente un motif constant : soit tous ses
+emplacements valident la somme de contrôle, soit aucun. Ce n'est pas une
+probabilité, c'est un déterminisme — à éprouver par un test, pas à supposer.
 
 **Valeurs sentinelles.** Un champ dont le compteur vaut zéro porte `INT16_MIN`
 pour les signés, `UINT16_MAX` pour les non signés. Le compteur fait foi : la
@@ -76,7 +85,7 @@ sentinelle n'est qu'une protection contre une lecture qui l'ignorerait.
 | Bit | Signification |
 |---:|---|
 | 0 | Heure partielle — l'agrégation a été interrompue par un redémarrage |
-| 1 | Cet enregistrement a écrasé un enregistrement non collecté |
+| 1 | Cet enregistrement a écrasé un enregistrement non collecté. **Exposé en CSV sous `overwrote`** |
 
 ⚠️ **32 divise exactement la page d'écriture de 128 octets et le bloc de
 65 536.** Aucun enregistrement ne chevauche jamais une frontière. Cette propriété
@@ -105,7 +114,7 @@ réglages régionaux de la machine qui l'ouvre.
 **Colonnes, dans l'ordre :**
 
 ```
-ts_utc,t_in,rh_in,t_out,t_out_min,t_out_max,rh_out,co2,pm1,pm25,pm10,n_in,n_out,n_co2,n_pm,partial
+ts_utc,t_in,rh_in,t_out,t_out_min,t_out_max,rh_out,co2,pm1,pm25,pm10,n_in,n_out,n_co2,n_pm,partial,overwrote
 ```
 
 Les valeurs sont exprimées dans leur unité naturelle, non multipliées : `21.5`
@@ -114,9 +123,9 @@ pour 21,5 °C, `-3.2`, `847` pour 847 ppm, `12.4` µg/m³.
 **Une grandeur non mesurée sort en champ vide**, son compteur à `0` :
 
 ```
-ts_utc,t_in,rh_in,t_out,t_out_min,t_out_max,rh_out,co2,pm1,pm25,pm10,n_in,n_out,n_co2,n_pm,partial
-2026-08-12T14:00:00Z,21.5,48.2,18.1,17.4,19.0,62.1,847,3.1,5.2,7.8,30,30,12,6,0
-2026-08-12T15:00:00Z,21.7,47.9,,,,,912,3.4,5.6,8.1,30,0,12,6,0
+ts_utc,t_in,rh_in,t_out,t_out_min,t_out_max,rh_out,co2,pm1,pm25,pm10,n_in,n_out,n_co2,n_pm,partial,overwrote
+2026-08-12T14:00:00Z,21.5,48.2,18.1,17.4,19.0,62.1,847,3.1,5.2,7.8,30,30,12,6,0,0
+2026-08-12T15:00:00Z,21.7,47.9,,,,,912,3.4,5.6,8.1,30,0,12,6,0,0
 ```
 
 Sur la seconde ligne, le capteur extérieur n'a rien produit : quatre champs vides,
@@ -173,8 +182,11 @@ Réponse en CSV à deux colonnes `cle,valeur` — un seul format, un seul analys
 | `sensors` | Inventaire et état, une clé par capteur |
 | `uptime_s` | Secondes depuis le démarrage |
 
-`overwritten` est la mesure de ce qui a été perdu. Il **doit** être rapporté, pas
-déduit.
+`overwritten` est **cumulatif et peut repartir de zéro** si l'appareil redémarre
+sans le persister. Ce n'est donc pas la source de vérité d'une perte : la colonne
+`overwrote` de chaque ligne l'est, parce qu'elle est portée par la donnée
+elle-même et survit à tout. Le compteur reste utile en complément, et une
+décroissance signale un redémarrage de l'appareil, jamais l'absence de perte.
 
 ### Opérations modifiant un état
 
@@ -213,8 +225,17 @@ datée n'importe comment.
 Sept relevés au lieu de trente est une information honnête dès lors que le sept
 est visible.
 
-**L'écrasement s'incrémente** quand l'anneau recouvre un enregistrement non
-collecté.
+**L'écrasement se marque dans la donnée.** Quand l'écriture d'une heure recouvre
+un enregistrement non encore collecté, le bit 1 de `flags` est posé **sur
+l'enregistrement écrivain**, et sort en CSV dans `overwrote`. Le compteur
+`overwritten` est incrémenté en parallèle.
+
+⚠️ **L'appareil ne sait ce qui a été collecté que par le paramètre `since` des
+requêtes reçues.** Il retient le plus grand `since` vu depuis son démarrage : le
+collecteur ne demande `since=X` que s'il détient déjà tout jusqu'à X. Ce repère
+vit en mémoire vive et repart de zéro à chaque démarrage — donc l'appareil
+**sur-compte** tant qu'aucune collecte n'a eu lieu depuis son redémarrage. C'est
+délibéré : sous-compter une perte est plus grave que la sur-compter.
 
 ---
 
@@ -225,7 +246,8 @@ collecté.
 - **Ajouter** à l'archive, ne jamais réécrire une ligne passée
 - Détecter les discontinuités d'horodatage et les rapporter dans le rapport
 - Alerter au-delà d'un seuil d'injoignabilité
-- Reporter `overwritten` : c'est la seule trace d'une perte
+- Reporter les lignes portant `overwrote` à `1` : c'est la trace durable d'une
+  perte. Le compteur `overwritten` vient en complément, jamais seul
 
 ---
 
