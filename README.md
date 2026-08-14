@@ -98,7 +98,7 @@ data-collector/
 | N° | Titre | Statut |
 |---|---|---|
 | [0001](design/briefs/0001-brief-collecteur.md) | Le collecteur et son simulateur | ✅ Exécuté — 2026-08-13, bilan en fin de document |
-| [0002](design/briefs/0002-brief-colonne-overwrote.md) | La colonne `overwrote` | 📋 Rédigé — 2026-08-13 |
+| [0002](design/briefs/0002-brief-colonne-overwrote.md) | La colonne `overwrote` | ✅ Exécuté — 2026-08-13, **addendum en attente** |
 
 ### Un enseignement du premier lot
 

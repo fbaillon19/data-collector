@@ -105,3 +105,40 @@ la disposition binaire côté appareil, que le collecteur ne voit jamais.
 
 Le critère 3 est celui qui n'existait pas et qui manquait. Le critère 5 est celui
 qu'on casse facilement en corrigeant le 1.
+
+---
+
+## Addendum du 2026-08-13 — une perte non datée ne se range pas dans un mois
+
+Relevé par Claude Code en éprouvant le critère 4, et sous-estimé dans sa
+formulation initiale.
+
+**Le fait.** Un événement d'origine *colonne* hérite de l'horodatage de la ligne
+archivée : il est daté du moment de la perte. Un événement d'origine *compteur*
+n'a aucun ancrage historique et prend l'heure du `poll`. Une perte détectée
+plusieurs semaines après coup atterrit donc dans le bilan du **mois de sa
+détection**, pas du mois où elle a eu lieu.
+
+**Pourquoi ce n'est pas seulement une limite à connaître.** Le rapport mensuel
+présenterait cette perte comme appartenant au mois, alors que sa date est
+inconnue. Une inconnue rangée dans une case devient une certitude fausse — c'est
+la faute que ce dépôt existe pour ne pas commettre.
+
+Et l'absence de date n'est pas un défaut d'implémentation : quand seul le compteur
+a vu la perte, c'est que la ligne portant `overwrote=1` a elle-même été écrasée.
+**L'information n'existe nulle part.** Il n'y a donc rien à reconstituer, seulement
+à ne pas prétendre.
+
+### Correction demandée
+
+Le bilan mensuel sépare les deux origines :
+
+- Les pertes **datées**, comptées depuis la colonne, entrent dans le total du mois.
+- Les pertes **d'origine compteur** sont listées à part, sous une mention explicite
+  du type « détectée le JJ/MM, date de survenue inconnue ». Elles n'entrent pas
+  dans le total du mois.
+
+Une seule ligne de rapport, mais elle change ce que le lecteur croit savoir.
+
+**Critère** : un mois recevant les deux origines produit deux rubriques distinctes,
+et le total du mois n'inclut que les pertes datées.
