@@ -219,7 +219,17 @@ capteur muet fait décroître son compteur, jamais la valeur d'un autre.
 
 **Si l'heure n'est pas fiable, rien n'est écrit.** Après une coupure sans
 resynchronisation, l'horodatage serait faux. Un trou vaut mieux qu'une heure
-datée n'importe comment.
+datée n'importe comment. **C'est le seul cas où l'appareil n'écrit pas.**
+
+**Une heure sans aucun échantillon est écrite quand même**, tous compteurs à zéro
+et toutes valeurs à leur sentinelle. L'appareil tournait, son heure était fiable,
+et aucun capteur n'a répondu : c'est une information, et elle se distingue d'un
+appareil éteint — qui, lui, ne produit aucune ligne.
+
+⚠️ Un trou dans la série signifie donc **« l'appareil n'a pas écrit »** — éteint,
+ou heure non fiable. Une ligne à compteurs nuls signifie **« l'appareil a écrit
+qu'il n'avait rien mesuré »**. Ne pas confondre les deux, et ne jamais produire la
+première là où la seconde est possible.
 
 **Une heure partielle est écrite avec son compteur réel** et le bit `partial`.
 Sept relevés au lieu de trente est une information honnête dès lors que le sept
