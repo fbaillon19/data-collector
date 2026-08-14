@@ -112,7 +112,7 @@ class Criterion4_SchemaExtensionOpensNewFile(unittest.TestCase):
     @staticmethod
     def _row(ts, **overrides):
         row = {col: "" for col in archive.BASE_COLUMNS}
-        row.update(ts_utc=ts, n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0")
+        row.update(ts_utc=ts, n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0", overwrote="0")
         row.update(overrides)
         return row
 
@@ -140,10 +140,16 @@ class Criterion4_SchemaExtensionOpensNewFile(unittest.TestCase):
 
 
 class Criterion5_SchemaViolationRejectsWholeBatch(ScenarioArchiveCase):
+    """Also brief 0002 criterion 2: a header missing `overwrote` — the base
+    schema was corrected before any real archive existed, so this is a
+    contract violation, not a legitimate older generation.
+    """
+
     scenario = "schema_violation"
 
-    def test_reordered_header_is_rejected_without_partial_write(self):
+    def test_header_missing_overwrote_is_rejected_without_partial_write(self):
         batch = fetch_history(self.base_url, since=None, timeout_s=2)
+        self.assertNotIn("overwrote", batch.header)
         with self.assertRaises(archive.SchemaViolation):
             archive.write_batch(self.archive_root, "clock", batch.header, batch.rows)
 
@@ -165,14 +171,40 @@ class Criterion5_MalformedRowRejectsWholeBatch(ScenarioArchiveCase):
 
 
 class OverwrittenDetectionTest(unittest.TestCase):
-    def test_increase_is_reported_as_a_loss(self):
-        self.assertEqual(archive.check_overwritten(12, 17), 5)
+    def test_increase_is_classified_as_a_loss(self):
+        change = archive.check_overwritten(12, 17)
+        self.assertEqual(change.kind, "loss")
+        self.assertEqual(change.delta, 5)
 
-    def test_unchanged_is_not_a_loss(self):
+    def test_decrease_is_classified_as_a_restart(self):
+        change = archive.check_overwritten(45, 3)
+        self.assertEqual(change.kind, "restart")
+        self.assertEqual(change.previous, 45)
+        self.assertEqual(change.current, 3)
+        self.assertEqual(change.delta, 42)
+
+    def test_unchanged_is_neither(self):
         self.assertIsNone(archive.check_overwritten(12, 12))
 
-    def test_no_previous_value_is_not_a_loss(self):
+    def test_no_previous_value_is_neither(self):
         self.assertIsNone(archive.check_overwritten(None, 12))
+
+
+class Brief0002_Criterion1_OverwroteRowLogsADurableEvent(ScenarioArchiveCase):
+    """brief 0002 criterion 1: a row carrying overwrote=1 must produce a
+    durable overwrite_detected entry, independent of the live counter.
+    """
+
+    scenario = "overwritten"
+
+    def test_flagged_row_produces_a_durable_overwrite_detected(self):
+        result = self.poll()
+        self.assertEqual(result.overwrote_count, 1)
+
+        events = archive.read_events(self.archive_root, "clock")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event"], "overwrite_detected")
+        self.assertEqual(events[0]["detail"], "1")
 
 
 class TimeUntrustedTest(unittest.TestCase):
@@ -222,7 +254,7 @@ class MutedSensorArchiveDetectionTest(unittest.TestCase):
         row = {col: "" for col in archive.BASE_COLUMNS}
         row.update(
             ts_utc=f"2026-01-01T{hour:02d}:00:00Z",
-            n_in="30", n_out="0", n_co2="12", n_pm="6", partial="0",
+            n_in="30", n_out="0", n_co2="12", n_pm="6", partial="0", overwrote="0",
         )
         return row
 
@@ -270,7 +302,7 @@ class Criterion1_UndatedFileDoesNotConfuseCurrentFileDetection(unittest.TestCase
 
     def test_events_csv_is_excluded_from_generation_file_detection(self):
         row = {col: "" for col in archive.BASE_COLUMNS}
-        row.update(ts_utc="2026-01-01T00:00:00Z", n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0")
+        row.update(ts_utc="2026-01-01T00:00:00Z", n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0", overwrote="0")
         archive.write_batch(self.archive_root, "clock", archive.BASE_COLUMNS, [row])
 
         # events.csv sorts after "2026-01-01.csv" lexically ('e' > '2'):
@@ -339,7 +371,7 @@ class SchemaExtensionEventTest(unittest.TestCase):
     @staticmethod
     def _row(ts, **overrides):
         row = {col: "" for col in archive.BASE_COLUMNS}
-        row.update(ts_utc=ts, n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0")
+        row.update(ts_utc=ts, n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0", overwrote="0")
         row.update(overrides)
         return row
 

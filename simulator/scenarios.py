@@ -17,7 +17,7 @@ from typing import Callable, Dict, List, Optional
 HISTORY_COLUMNS = [
     "ts_utc", "t_in", "rh_in", "t_out", "t_out_min", "t_out_max",
     "rh_out", "co2", "pm1", "pm25", "pm10",
-    "n_in", "n_out", "n_co2", "n_pm", "partial",
+    "n_in", "n_out", "n_co2", "n_pm", "partial", "overwrote",
 ]
 
 # Hypothetical future firmware field, used only by schema_extension to prove
@@ -29,7 +29,7 @@ HOUR = dt.timedelta(hours=1)
 
 DEFAULT_LIMIT_CAP = 1000
 NAMES = [
-    "nominal", "gap", "dead_sensor", "overwritten", "time_untrusted",
+    "nominal", "gap", "dead_sensor", "overwritten", "device_restart", "time_untrusted",
     "unreachable", "schema_extension", "schema_violation", "pagination",
     "malformed", "empty",
 ]
@@ -46,7 +46,7 @@ def _full_row(hour_index: int, **overrides) -> Dict[str, str]:
         "t_out": "18.1", "t_out_min": "17.4", "t_out_max": "19.0", "rh_out": "62.1",
         "co2": "847", "pm1": "3.1", "pm25": "5.2", "pm10": "7.8",
         "n_in": "30", "n_out": "30", "n_co2": "12", "n_pm": "6",
-        "partial": "0",
+        "partial": "0", "overwrote": "0",
     }
     row.update(overrides)
     return row
@@ -135,6 +135,9 @@ def _build_dead_sensor() -> Scenario:
 
 def _build_overwritten() -> Scenario:
     rows = [_full_row(i) for i in range(24)]
+    # The counter's increase is corroborated by the durable column: the two
+    # sources agree on the same episode (COLLECTE.md §5, brief 0002).
+    rows[-1] = dict(rows[-1], overwrote="1")
     counter = {"value": 12}
 
     def status_factory():
@@ -143,6 +146,24 @@ def _build_overwritten() -> Scenario:
         return status
 
     return Scenario("overwritten", HISTORY_COLUMNS, rows, status_factory)
+
+
+def _build_device_restart() -> Scenario:
+    """The counter decreases between two polls — the device rebooted, and
+    its in-RAM `overwritten` counter reset — while a row still carries
+    `overwrote=1`. The old counter-only logic read a lower value as "nothing
+    happened"; this is the case that used to vanish into silence.
+    """
+    rows = [_full_row(i) for i in range(24)]
+    rows[-1] = dict(rows[-1], overwrote="1")
+    calls = {"count": 0}
+
+    def status_factory():
+        calls["count"] += 1
+        value = 45 if calls["count"] == 1 else 3
+        return _base_status(rows, overwritten=str(value))
+
+    return Scenario("device_restart", HISTORY_COLUMNS, rows, status_factory)
 
 
 def _build_time_untrusted() -> Scenario:
@@ -168,8 +189,11 @@ def _build_schema_extension() -> Scenario:
 
 
 def _build_schema_violation() -> Scenario:
-    header = list(HISTORY_COLUMNS)
-    header[1], header[2] = header[2], header[1]  # swap t_in / rh_in: reordered
+    # A header without `overwrote` — the exact regression brief 0002 warns
+    # about: the base schema was corrected before any real archive existed,
+    # so a device still serving the old 16-column header is not a legitimate
+    # extension, it is a contract violation and must be rejected outright.
+    header = HISTORY_COLUMNS[:-1]
     rows = [_full_row(i) for i in range(5)]
     return Scenario("schema_violation", header, rows, lambda: _base_status(rows))
 
@@ -208,6 +232,7 @@ _BUILDERS = {
     "gap": _build_gap,
     "dead_sensor": _build_dead_sensor,
     "overwritten": _build_overwritten,
+    "device_restart": _build_device_restart,
     "time_untrusted": _build_time_untrusted,
     "unreachable": _build_unreachable,
     "schema_extension": _build_schema_extension,

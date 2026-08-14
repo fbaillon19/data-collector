@@ -174,8 +174,8 @@ class NonNumericFieldTest(unittest.TestCase):
     def test_non_numeric_field_rejected(self):
         body = (
             b"ts_utc,t_in,rh_in,t_out,t_out_min,t_out_max,rh_out,co2,pm1,pm25,pm10,"
-            b"n_in,n_out,n_co2,n_pm,partial\n"
-            b"2026-01-01T00:00:00Z,abc,48.2,18.1,17.4,19.0,62.1,847,3.1,5.2,7.8,30,30,12,6,0\n"
+            b"n_in,n_out,n_co2,n_pm,partial,overwrote\n"
+            b"2026-01-01T00:00:00Z,abc,48.2,18.1,17.4,19.0,62.1,847,3.1,5.2,7.8,30,30,12,6,0,0\n"
         )
         with raw_response_server(body) as base_url:
             with self.assertRaises(MalformedBatchError):
@@ -190,8 +190,8 @@ class InvalidTimestampTest(unittest.TestCase):
     def test_timestamp_missing_utc_suffix_is_rejected(self):
         body = (
             b"ts_utc,t_in,rh_in,t_out,t_out_min,t_out_max,rh_out,co2,pm1,pm25,pm10,"
-            b"n_in,n_out,n_co2,n_pm,partial\n"
-            b"2026-01-01T00:00:00,21.5,48.2,18.1,17.4,19.0,62.1,847,3.1,5.2,7.8,30,30,12,6,0\n"
+            b"n_in,n_out,n_co2,n_pm,partial,overwrote\n"
+            b"2026-01-01T00:00:00,21.5,48.2,18.1,17.4,19.0,62.1,847,3.1,5.2,7.8,30,30,12,6,0,0\n"
         )
         with raw_response_server(body) as base_url:
             with self.assertRaisesRegex(MalformedBatchError, "ts_utc"):
@@ -200,8 +200,8 @@ class InvalidTimestampTest(unittest.TestCase):
     def test_non_iso_timestamp_is_rejected(self):
         body = (
             b"ts_utc,t_in,rh_in,t_out,t_out_min,t_out_max,rh_out,co2,pm1,pm25,pm10,"
-            b"n_in,n_out,n_co2,n_pm,partial\n"
-            b"not-a-timestamp,21.5,48.2,18.1,17.4,19.0,62.1,847,3.1,5.2,7.8,30,30,12,6,0\n"
+            b"n_in,n_out,n_co2,n_pm,partial,overwrote\n"
+            b"not-a-timestamp,21.5,48.2,18.1,17.4,19.0,62.1,847,3.1,5.2,7.8,30,30,12,6,0,0\n"
         )
         with raw_response_server(body) as base_url:
             with self.assertRaisesRegex(MalformedBatchError, "ts_utc"):

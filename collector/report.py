@@ -225,18 +225,43 @@ def _format_overwritten_bilan(month_events: List[Dict[str, str]], current_overwr
     from the archive, and reconstruction cannot recover a loss history that
     exists nowhere else. The live value, when available, is shown only as a
     supplementary "as of now" figure, never as the source of the bilan.
+
+    Two event types, two rubrics — never merged into one total. A
+    `overwrite_detected` entry carries the archived row's own ts_utc: it is
+    dated, and counts toward the month it actually happened in.
+    `overwrite_suspected` is what the live counter alone can offer, stamped
+    with poll time because the row that would have dated it precisely was
+    itself overwritten before it could be collected. Folding the two into
+    one total would present an unknown date as a known one — filing an
+    undated loss under "this month" is a false certainty, not a rounding
+    error.
     """
-    losses = [int(e["detail"]) for e in month_events if e["event"] == "overwrite_detected"]
-    if losses:
-        bilan = f"{sum(losses)} enregistrement(s) perdu(s) sur {len(losses)} evenement(s) ce mois-ci."
+    dated = [int(e["detail"]) for e in month_events if e["event"] == "overwrite_detected"]
+    suspected = [e for e in month_events if e["event"] == "overwrite_suspected"]
+
+    if dated:
+        dated_line = f"{sum(dated)} enregistrement(s) perdu(s) sur {len(dated)} evenement(s) dates ce mois-ci."
     else:
-        bilan = "aucun evenement d'ecrasement ce mois-ci."
+        dated_line = "aucune perte datee ce mois-ci."
+
+    if suspected:
+        suspected_lines = [
+            "Pertes suspectees, date de survenue inconnue (non comptees dans le total du mois) :"
+        ]
+        for e in suspected:
+            suspected_lines.append(
+                f"  - {e['detail']} enregistrement(s), detectee le {e['ts_utc']} (overwritten={e['context']})"
+            )
+        suspected_block = "\n".join(suspected_lines)
+    else:
+        suspected_block = "Pertes suspectees, date de survenue inconnue : aucune."
+
     current = (
         f"Compteur actuel de l'appareil (en direct) : {current_overwritten}."
         if current_overwritten is not None
         else "Compteur actuel de l'appareil : non disponible (appareil injoignable au moment du rapport)."
     )
-    return f"Ecrasements : {bilan}\n{current}"
+    return f"Ecrasements : {dated_line}\n{suspected_block}\n{current}"
 
 
 def build_monthly_report(

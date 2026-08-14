@@ -30,7 +30,7 @@ class StateTest(unittest.TestCase):
         header = archive.BASE_COLUMNS
         row = {col: "" for col in header}
         row["ts_utc"] = "2026-01-01T05:00:00Z"
-        for c in ("n_in", "n_out", "n_co2", "n_pm", "partial"):
+        for c in ("n_in", "n_out", "n_co2", "n_pm", "partial", "overwrote"):
             row[c] = "0"
         archive.write_batch(self.archive_dir, "clock", header, [row])
 

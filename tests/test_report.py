@@ -11,7 +11,7 @@ from collector import archive, report
 
 def _row(ts, **overrides):
     row = {col: "" for col in archive.BASE_COLUMNS}
-    row.update(ts_utc=ts, n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0")
+    row.update(ts_utc=ts, n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0", overwrote="0")
     row.update(
         t_in="21.5", rh_in="48.2", t_out="18.0", t_out_min="17.0", t_out_max="19.0",
         rh_out="60.0", co2="800", pm1="3.0", pm25="5.0", pm10="7.0",
@@ -120,7 +120,7 @@ class Criterion3_OverwrittenBilanComesFromTheJournalNotTheDevice(MonthlyReportCa
             self.archive_root, "clock", window, max_attachment_mb=20, current_overwritten=None
         )
 
-        self.assertIn("22 enregistrement(s) perdu(s) sur 2 evenement(s)", body)
+        self.assertIn("22 enregistrement(s) perdu(s) sur 2 evenement(s) dates ce mois-ci", body)
         self.assertNotIn("99", body)
         self.assertIn("non disponible", body)  # the live counter line, honestly absent
 
@@ -128,7 +128,33 @@ class Criterion3_OverwrittenBilanComesFromTheJournalNotTheDevice(MonthlyReportCa
         self._write([_row("2026-07-01T00:00:00Z")])
         window = report.MonthWindow(2026, 7)
         body, _ = report.build_monthly_report(self.archive_root, "clock", window, max_attachment_mb=20)
-        self.assertIn("aucun evenement d'ecrasement", body)
+        self.assertIn("aucune perte datee ce mois-ci", body)
+        self.assertIn("Pertes suspectees, date de survenue inconnue : aucune", body)
+
+
+class Addendum_UndatedLossesStayOutOfTheMonthlyTotal(MonthlyReportCase):
+    """design/briefs/0002-brief-colonne-overwrote.md, addendum du 2026-08-13:
+    an undated (counter-only) loss must never be filed under a month it
+    cannot be shown to belong to. Two rubrics, and the total counts only
+    what is dated.
+    """
+
+    def test_month_with_both_origins_keeps_them_in_separate_rubrics(self):
+        self._write([_row("2026-07-01T00:00:00Z")])
+        archive.log_event(self.archive_root, "clock", "overwrite_detected", detail="17", ts="2026-07-03T14:00:00Z")
+        archive.log_event(
+            self.archive_root, "clock", "overwrite_suspected", detail="5", context="22", ts="2026-07-20T09:00:00Z"
+        )
+
+        window = report.MonthWindow(2026, 7)
+        body, _ = report.build_monthly_report(self.archive_root, "clock", window, max_attachment_mb=20)
+
+        # The total counts only the dated loss — the undated one must never
+        # be silently folded in, inflating a figure the archive can't back.
+        self.assertIn("17 enregistrement(s) perdu(s) sur 1 evenement(s) dates ce mois-ci", body)
+        self.assertNotIn("22 enregistrement", body)  # 17+5 must never appear as a single total
+        self.assertIn("Pertes suspectees, date de survenue inconnue (non comptees dans le total du mois)", body)
+        self.assertIn("5 enregistrement(s), detectee le 2026-07-20T09:00:00Z (overwritten=22)", body)
 
 
 class ExportCsvTest(MonthlyReportCase):

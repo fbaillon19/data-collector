@@ -1,5 +1,5 @@
-"""HTTP collection against COLLECTE.md §4: paginated GET /api/history and
-GET /api/status.
+"""HTTP collection against COLLECTE.md §4: paginated GET /collect/history and
+GET /collect/status.
 
 Row-level well-formedness is enforced here — a malformed row rejects the
 whole batch before archive.py ever sees it (brief §3). Schema-level
@@ -107,7 +107,7 @@ def fetch_history(base_url: str, since: Optional[str], timeout_s: float) -> Fetc
     cursor = since
 
     for _ in range(MAX_PAGES):
-        url = base_url.rstrip("/") + "/api/history"
+        url = base_url.rstrip("/") + "/collect/history"
         if cursor is not None:
             url += "?" + urllib.parse.urlencode({"since": cursor})
 
@@ -133,7 +133,7 @@ def fetch_history(base_url: str, since: Optional[str], timeout_s: float) -> Fetc
 
 
 def fetch_status(base_url: str, timeout_s: float) -> Dict[str, str]:
-    url = base_url.rstrip("/") + "/api/status"
+    url = base_url.rstrip("/") + "/collect/status"
     text = _get(url, timeout_s).decode("ascii")
     status: Dict[str, str] = {}
     for row in csv.reader(io.StringIO(text)):

@@ -6,12 +6,13 @@ from pathlib import Path
 from unittest import mock
 
 from collector import archive, config, main, report
+from simulator.server import serve_in_thread
 from tests.test_main import NtfyCapture, make_config
 
 
 def _row(ts, **overrides):
     row = {col: "" for col in archive.BASE_COLUMNS}
-    row.update(ts_utc=ts, n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0", t_out="18.0")
+    row.update(ts_utc=ts, n_in="30", n_out="30", n_co2="12", n_pm="6", partial="0", overwrote="0", t_out="18.0")
     row.update(overrides)
     return row
 
@@ -94,6 +95,54 @@ class MonthlyReportCommandTest(unittest.TestCase):
             sent = smtp.send_message.call_args[0][0]
             body = sent.get_body(preferencelist=("plain",)).get_content()
             self.assertIn("17 enregistrement(s) perdu(s) sur 1 evenement(s)", body)
+        finally:
+            os.environ.pop(config.SMTP_PASSWORD_ENV, None)
+            tmp.cleanup()
+
+    def test_brief_0002_criterion_4_bilan_from_a_real_overwrote_column_simulator_off(self):
+        """The events came from an actual `overwrote=1` row collected by a
+        real poll — not a hand-written log_event call — and the monthly
+        report is then generated with the device switched off entirely.
+        """
+        tmp = tempfile.TemporaryDirectory()
+        archive_root = Path(tmp.name)
+        httpd, _ = serve_in_thread("overwritten")
+        try:
+            cfg = make_config(f"http://127.0.0.1:{httpd.server_address[1]}", archive_root, "http://unused.invalid")
+            main.poll(cfg)  # archives the flagged row: write_batch logs it from the column
+            main.poll(cfg)  # counter-sourced second loss, no corroborating row
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+
+        events = archive.read_events(archive_root, "clock")
+        self.assertEqual([e["event"] for e in events], ["overwrite_detected", "overwrite_suspected"])
+
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+        probe.close()  # simulateur eteint : rien n'ecoute sur ce port
+
+        cfg = make_config(f"http://127.0.0.1:{port}", archive_root, "http://unused.invalid")
+        window = report.MonthWindow(2026, 1)  # the fixture's rows all fall in January 2026
+
+        try:
+            with mock.patch("smtplib.SMTP") as smtp_cls:
+                smtp = smtp_cls.return_value.__enter__.return_value
+                os.environ[config.SMTP_PASSWORD_ENV] = "s3cret"
+                ok = main.monthly_report(cfg, window=window)
+
+            self.assertTrue(ok)
+            sent = smtp.send_message.call_args[0][0]
+            body = sent.get_body(preferencelist=("plain",)).get_content()
+            # The column-sourced event is stamped with the archived row's own
+            # ts_utc (January 2026, inside the window): it counts toward the
+            # month's dated total. The counter-sourced one has no such anchor
+            # and is stamped "now" (today, outside the window) — it falls
+            # outside this report entirely, rather than being misfiled here.
+            self.assertIn("1 enregistrement(s) perdu(s) sur 1 evenement(s) dates ce mois-ci", body)
+            self.assertIn("Pertes suspectees, date de survenue inconnue : aucune", body)
+            self.assertIn("non disponible", body)  # the live counter, honestly absent
         finally:
             os.environ.pop(config.SMTP_PASSWORD_ENV, None)
             tmp.cleanup()

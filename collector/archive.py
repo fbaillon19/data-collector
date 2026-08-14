@@ -25,16 +25,16 @@ logger = logging.getLogger(__name__)
 BASE_COLUMNS = [
     "ts_utc", "t_in", "rh_in", "t_out", "t_out_min", "t_out_max",
     "rh_out", "co2", "pm1", "pm25", "pm10",
-    "n_in", "n_out", "n_co2", "n_pm", "partial",
+    "n_in", "n_out", "n_co2", "n_pm", "partial", "overwrote",
 ]
 
 # Always present, never empty, regardless of what a given hour measured.
-REQUIRED_COLUMNS = {"ts_utc", "n_in", "n_out", "n_co2", "n_pm", "partial"}
+REQUIRED_COLUMNS = {"ts_utc", "n_in", "n_out", "n_co2", "n_pm", "partial", "overwrote"}
 
 # May be empty (sensor silent that hour); when present, must parse as a number.
 NUMERIC_COLUMNS = {
     "t_in", "rh_in", "t_out", "t_out_min", "t_out_max", "rh_out",
-    "co2", "pm1", "pm25", "pm10", "n_in", "n_out", "n_co2", "n_pm", "partial",
+    "co2", "pm1", "pm25", "pm10", "n_in", "n_out", "n_co2", "n_pm", "partial", "overwrote",
 }
 
 COUNT_COLUMNS = ["n_in", "n_out", "n_co2", "n_pm"]
@@ -62,6 +62,7 @@ class WriteResult:
     duplicates: int
     new_file: Optional[Path] = None
     gaps: List[Gap] = field(default_factory=list)
+    overwrote_count: int = 0
 
 
 @dataclass
@@ -224,14 +225,47 @@ def write_batch(archive_root: Path, device: str, header: List[str], rows: List[D
     else:
         _append_rows(current_file, header, fresh_rows, write_header=False)
 
-    return WriteResult(written=len(fresh_rows), duplicates=duplicates, new_file=new_file, gaps=gaps)
+    # The `overwrote` column is the durable, per-record source of truth for a
+    # ring-buffer loss (COLLECTE.md §5) — it survives a device restart, which
+    # the live `overwritten` counter does not. Every flagged row gets its own
+    # journal entry, at the moment it is archived.
+    overwrote_rows = [r for r in fresh_rows if r.get("overwrote") == "1"]
+    for row in overwrote_rows:
+        log_event(archive_root, device, "overwrite_detected", detail="1", ts=row["ts_utc"])
+
+    return WriteResult(
+        written=len(fresh_rows), duplicates=duplicates, new_file=new_file, gaps=gaps,
+        overwrote_count=len(overwrote_rows),
+    )
 
 
-def check_overwritten(previous: Optional[int], current: int) -> Optional[int]:
-    """Returns the size of a newly detected ring-buffer loss, or None."""
-    if previous is not None and current > previous:
-        return current - previous
-    return None
+@dataclass
+class OverwrittenChange:
+    kind: str  # "loss" (current > previous) or "restart" (current < previous)
+    previous: int
+    current: int
+
+    @property
+    def delta(self) -> int:
+        return abs(self.current - self.previous)
+
+
+def check_overwritten(previous: Optional[int], current: int) -> Optional[OverwrittenChange]:
+    """Classifies a change in the device's live `overwritten` counter.
+
+    "loss": a genuine increase — a fallback signal only, since the
+    `overwrote` column is the authoritative, durable one.
+
+    "restart": the counter is *lower* than last seen. This in-RAM counter
+    resets to zero on every device reboot (COLLECTE.md §4), so a decrease
+    does not mean nothing was lost — it means the counter itself cannot be
+    trusted as a running total anymore. Treating it as "no news" would
+    silently swallow that fact; it must produce an event, not a silence.
+    """
+    if previous is None or current == previous:
+        return None
+    kind = "loss" if current > previous else "restart"
+    return OverwrittenChange(kind=kind, previous=previous, current=current)
 
 
 def is_time_untrusted(status: Dict[str, str]) -> bool:

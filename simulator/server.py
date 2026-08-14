@@ -1,4 +1,4 @@
-"""HTTP server exposing /api/history and /api/status per COLLECTE.md §4.
+"""HTTP server exposing /collect/history and /collect/status per COLLECTE.md §4.
 
 Backed by a selectable scenario from simulator.scenarios. Used standalone
 against a real collector run, and embedded in tests to drive fetch.py and
@@ -30,9 +30,9 @@ class ScenarioHandler(BaseHTTPRequestHandler):
 
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
-        if parsed.path == "/api/history":
+        if parsed.path == "/collect/history":
             self._handle_history(scenario, query)
-        elif parsed.path == "/api/status":
+        elif parsed.path == "/collect/status":
             self._handle_status(scenario)
         else:
             self.send_error(404)

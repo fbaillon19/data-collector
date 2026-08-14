@@ -56,23 +56,54 @@ def _handle_unreachable(
 
 
 def _check_overwritten(
-    cfg: config.Config, device: config.DeviceConfig, device_state: Dict[str, Any], status: Dict[str, str]
+    cfg: config.Config,
+    device: config.DeviceConfig,
+    device_state: Dict[str, Any],
+    status: Dict[str, str],
+    column_already_logged: bool,
 ) -> None:
+    """`column_already_logged` is True when this same poll's batch already
+    contained rows with `overwrote=1` — write_batch has already journaled
+    those, row by row, before this function runs. The `overwrote` column is
+    the authoritative source (COLLECTE.md §4); the live counter is a
+    fallback, not a second witness. When both agree, only the column's
+    entries stand — logging the counter's delta too would double-count the
+    same loss under two entries.
+    """
     try:
         current = int(status["overwritten"])
     except (KeyError, ValueError):
         logger.warning("%s: status has no valid 'overwritten' field", device.name)
         return
-    loss = archive.check_overwritten(device_state["last_overwritten"], current)
-    if loss:
-        archive.log_event(cfg.archive.dir, device.name, "overwrite_detected", detail=str(loss), context=str(current))
-        _alert(
-            cfg,
-            f"{device.name} : perte definitive",
-            f"{loss} enregistrement(s) ecrases avant collecte (overwritten={current}).",
-            priority="high",
-        )
-        device_state["last_alerts"]["overwritten"] = _now_iso()
+
+    change = archive.check_overwritten(device_state["last_overwritten"], current)
+    if change is not None:
+        if change.kind == "loss":
+            if not column_already_logged:
+                # Undated: the row that would have carried overwrote=1 was
+                # itself overwritten before it could be collected — there is
+                # no ts_utc to anchor this loss to, and none to reconstruct.
+                # A distinct event name, not just a flag, so events.csv
+                # itself says so to anyone reading it without report.py.
+                archive.log_event(
+                    cfg.archive.dir, device.name, "overwrite_suspected",
+                    detail=str(change.delta), context=str(change.current),
+                )
+            _alert(
+                cfg,
+                f"{device.name} : perte definitive",
+                f"{change.delta} enregistrement(s) ecrases avant collecte (overwritten={change.current}).",
+                priority="high",
+            )
+            device_state["last_alerts"]["overwritten"] = _now_iso()
+        elif change.kind == "restart":
+            # Not a loss by itself — the `overwrote` column is what proves
+            # that — but a fact that must not disappear: the counter can no
+            # longer be trusted as a running total from here.
+            archive.log_event(
+                cfg.archive.dir, device.name, "device_restarted",
+                detail=str(change.current), context=str(change.previous),
+            )
     device_state["last_overwritten"] = current
 
 
@@ -162,7 +193,7 @@ def _poll_device(cfg: config.Config, device: config.DeviceConfig, archive_root: 
             "gap for %s: %s -> %s (%d h missing)", device.name, gap.after_ts, gap.before_ts, gap.missing_hours
         )
 
-    _check_overwritten(cfg, device, device_state, status)
+    _check_overwritten(cfg, device, device_state, status, column_already_logged=result.overwrote_count > 0)
     _check_time_untrusted(cfg, device, device_state, status)
     _check_muted_sensors(cfg, device, device_state, archive_root)
 
