@@ -157,12 +157,22 @@ n'a à deviner laquelle des deux sémantiques s'applique.
 
 | Paramètre | Sémantique |
 |---|---|
-| `since` | Horodatage UTC. Renvoie les heures **strictement postérieures**. Absent ⇒ tout ce qui est détenu |
+| `since` | Horodatage **au format ISO 8601 UTC**, identique à la colonne `ts_utc` — `2026-08-12T14:00:00Z`, encodé pour l'URL. Renvoie les heures **strictement postérieures**. Absent ⇒ tout ce qui est détenu |
 | `limit` | Nombre maximal de lignes. Défaut et plafond fixés par le firmware |
 
 Réponse `200`, `Content-Type: text/csv`, **émise par tranches** — jamais composée
 en RAM. La ligne d'en-tête est toujours présente, y compris quand
 aucune ligne de données ne suit.
+
+⚠️ **Le format de `since` est celui de la colonne, pas un epoch Unix.** Le
+collecteur renvoie littéralement la dernière valeur de `ts_utc` qu'il détient : il
+n'a rien à convertir, et l'appareil non plus au-delà de l'analyse. Un appareil qui
+lirait ce paramètre avec un `atoi` obtiendrait l'année — une valeur plausible,
+silencieusement fausse. **Ce piège s'est produit le 2026-08-13**, et il n'a été
+trouvé qu'en faisant dialoguer les deux implémentations réelles.
+
+⚠️ **Le paramètre arrive encodé pour l'URL** : les deux-points de l'heure y
+figurent en `%3A`. Le décodage est à la charge de l'appareil.
 
 **La pagination ne demande aucun protocole.** Le collecteur rappelle avec
 `since` = dernier horodatage reçu, jusqu'à obtenir zéro ligne. L'état vit chez le
