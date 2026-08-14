@@ -4,15 +4,29 @@
 > le contrat décrit dans [`COLLECTE.md`](COLLECTE.md).
 
 **État : implémentation complète, jamais confrontée à un appareil réel.**
-Créé le 2026-08-12, collecteur livré le 2026-08-13 — 73 tests, aucune dépendance
+Contrat posé le 2026-08-13 à 19 h 52, collecteur livré le **2026-08-14** à 00 h 01,
+colonne `overwrote` le même jour à 09 h 54 — **79 tests**, aucune dépendance
 tierce.
+
+*Chiffres et dates corrigés le 2026-08-14, sur l'historique Git. Ce document
+annonçait « 73 tests » et une livraison le 13 : la session avait commencé le 13 au
+soir et débordé après minuit. Le dépôt horloge portait le même décalage, et
+annonçait de son côté 78 tests. **Aucune des deux valeurs n'était juste.***
 
 Aucun appareil ne sert encore le contrat : l'horloge sera modifiée lors d'une
 dépose à venir. Le collecteur a été écrit et éprouvé contre un simulateur, et
 deviendra le banc de test du firmware le jour de la repose.
 
 **Reste avant mise en service** : configuration réelle hors dépôt, installation
-des unités `systemd` sur le Pi, première collecte contre l'horloge.
+des unités `systemd` sur le Pi, première collecte contre l'horloge. La procédure
+est dans [`docs/INSTALLATION-PI.md`](docs/INSTALLATION-PI.md).
+
+⚠️ **L'horloge ne sert pas encore le contrat.** Son firmware `/collect/` est
+écrit et testé mais n'a jamais été flashé : la première collecte réelle n'aura
+lieu qu'après la dépose. Ce que l'installation peut valider dès maintenant, c'est
+**tout le reste** — minuteries, archive, rapports, sauvegarde et sa restauration —
+contre le simulateur. Le jour de la repose, l'horloge sera alors la seule
+inconnue.
 
 ---
 
@@ -28,7 +42,7 @@ perdues, puis fabriquées, sans que personne le remarque.
 
 | | |
 |---|---|
-| **Interroge** | `GET /api/history?since=…` jusqu'à obtenir zéro ligne |
+| **Interroge** | `GET /collect/history?since=…` jusqu'à obtenir zéro ligne |
 | **Ajoute** | à un CSV d'archive, sans jamais réécrire une ligne passée |
 | **Rapporte** | résumé hebdomadaire bref, synthèse mensuelle avec l'archive jointe |
 | **Alerte** | appareil injoignable, capteur muet, écrasement d'anneau |
@@ -97,8 +111,12 @@ data-collector/
 
 | N° | Titre | Statut |
 |---|---|---|
-| [0001](design/briefs/0001-brief-collecteur.md) | Le collecteur et son simulateur | ✅ Exécuté — 2026-08-13, bilan en fin de document |
-| [0002](design/briefs/0002-brief-colonne-overwrote.md) | La colonne `overwrote` | ✅ Exécuté — 2026-08-13, **addendum en attente** |
+| [0001](design/briefs/0001-brief-collecteur.md) | Le collecteur et son simulateur | ✅ Exécuté — 2026-08-14, bilan en fin de document |
+| [0002](design/briefs/0002-brief-colonne-overwrote.md) | La colonne `overwrote` | ✅ Exécuté — 2026-08-14, **addendum en attente** |
+
+⚠️ Le préfixe des routes est passé sous `/collect/` le 2026-08-14 à 00 h 13, après
+l'exécution du brief 0001. Les deux implémentations et le contrat sont d'accord ;
+seule cette page annonçait encore `/api/history`, corrigé le 2026-08-14.
 
 ### Un enseignement du premier lot
 
