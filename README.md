@@ -93,8 +93,12 @@ data-collector/
 └── tests/
 ```
 
-**Spécification** : [brief 0001](design/briefs/0001-brief-collecteur.md) — le
-collecteur et son simulateur. ✅ Exécuté, avec son bilan en fin de document.
+**Briefs**
+
+| N° | Titre | Statut |
+|---|---|---|
+| [0001](design/briefs/0001-brief-collecteur.md) | Le collecteur et son simulateur | ✅ Exécuté — 2026-08-13, bilan en fin de document |
+| [0002](design/briefs/0002-brief-colonne-overwrote.md) | La colonne `overwrote` | 📋 Rédigé — 2026-08-13 |
 
 ### Un enseignement du premier lot
 
