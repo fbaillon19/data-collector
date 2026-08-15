@@ -115,6 +115,7 @@ data-collector/
 | [0002](design/briefs/0002-brief-colonne-overwrote.md) | La colonne `overwrote` | ✅ Exécuté — 2026-08-14, **addendum en attente** |
 
 | [0003](design/briefs/0003-brief-installation-pi.md) | Mise en service sur le Pi | *à exécuter par l'auteur* |
+| [0004](design/briefs/0004-brief-ci-et-coherence.md) | Intégration continue et barrière de cohérence | *à exécuter par Claude Code* |
 
 ⚠️ Le préfixe des routes est passé sous `/collect/` le 2026-08-14 à 00 h 13, après
 l'exécution du brief 0001. Les deux implémentations et le contrat sont d'accord ;

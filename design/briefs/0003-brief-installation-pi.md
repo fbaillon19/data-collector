@@ -2,9 +2,10 @@
 
 > **Exécutant** : **l'auteur**, sur le Pi. Claude Code n'y a pas accès, et rien de
 > ce lot ne se fait dans le dépôt.
-> **Décidé par** : [ADR-0005](../../../smart-led-clock/design/adr/0005-bascule-du-transport-en-pull.md)
-> `D4`, et [ADR-0004](../../../smart-led-clock/design/adr/0004-fiabilite-de-la-chaine-de-donnees.md)
-> critère 5
+> **Décidé par** : `ADR-0005` `D4` et `ADR-0004` critère 5, tous deux dans le
+> dépôt `smart-led-clock`. **Références textuelles, pas des liens** : une cible
+> hors dépôt ne résout que si les deux dossiers sont voisins sur le disque, ce
+> qui n'est vrai ni dans une CI ni dans un clone isolé
 > **Procédure** : [`docs/INSTALLATION-PI.md`](../../docs/INSTALLATION-PI.md) —
 > elle décrit **comment**, ce brief dit **ce qui compte comme réussi**
 > **Date** : 2026-08-15

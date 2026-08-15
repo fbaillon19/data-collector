@@ -238,8 +238,8 @@ d'activer les minuteries, et à vérifier par la réception effective du message
 
 ## 6. Vérifier la sauvegarde en la restaurant
 
-**C'est le critère 5 d'[ADR-0004](../../smart-led-clock/design/adr/0004-fiabilite-de-la-chaine-de-donnees.md),
-et il ne se coche pas sans l'avoir fait.**
+**C'est le critère 5 d'`ADR-0004`, dans le dépôt `smart-led-clock`, et il ne se
+coche pas sans l'avoir fait.**
 
 Le courriel mensuel **est** la sauvegarde : il emporte l'archive entière, pas le
 mois écoulé. Chaque message est donc censé être un point de restauration autonome.
