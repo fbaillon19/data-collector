@@ -16,7 +16,7 @@ Tests                 : 79 (8 fichiers)
   test_report.py           : 16
   test_state.py            : 4
 
-Briefs exécutés       : 2 / 3
+Briefs exécutés       : 2 / 4
 
 Modules du collecteur : 9
   __init__.py
