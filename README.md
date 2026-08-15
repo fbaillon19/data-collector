@@ -114,6 +114,8 @@ data-collector/
 | [0001](design/briefs/0001-brief-collecteur.md) | Le collecteur et son simulateur | ✅ Exécuté — 2026-08-14, bilan en fin de document |
 | [0002](design/briefs/0002-brief-colonne-overwrote.md) | La colonne `overwrote` | ✅ Exécuté — 2026-08-14, **addendum en attente** |
 
+| [0003](design/briefs/0003-brief-installation-pi.md) | Mise en service sur le Pi | *à exécuter par l'auteur* |
+
 ⚠️ Le préfixe des routes est passé sous `/collect/` le 2026-08-14 à 00 h 13, après
 l'exécution du brief 0001. Les deux implémentations et le contrat sont d'accord ;
 seule cette page annonçait encore `/api/history`, corrigé le 2026-08-14.
