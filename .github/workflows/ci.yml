@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  coherence:
+    name: Documentation coherence
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check documentation coherence
+        run: python3 tools/coherence.py
+
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    needs: coherence
+    runs-on: ubuntu-latest
+    strategy:
+      # Never stop at the first failing version: brief 0004 criterion 3 -
+      # a version that fails is recorded, not silently dropped from view by
+      # canceling the legs that haven't run yet.
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: python3 -m unittest discover -s tests -t .
